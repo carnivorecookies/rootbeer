@@ -8,17 +8,16 @@
  * Returns allocated data on success, which must be freed by the caller.
  * Returns NULL on error.
  */
-void *recv_all(int fd, size_t *plen);
+void *recv_all(int fd);
 
 /*
  * send_all - send a full message through a socket (prefixed with its length)
  * @fd - socket file descriptor
  * @buf - the text to send
- * @n - the length of the text to send
  *
  * Returns 0 on success and -1 on error.
  */
-int send_all(int fd, void *buf, size_t n);
+int send_all(int fd, void *buf);
 
 /*
  * shutdown_close - closes and shuts down a socket
