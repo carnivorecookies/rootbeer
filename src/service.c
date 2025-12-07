@@ -23,11 +23,12 @@
 
 /*
  * wheel_gid - get the gid of the wheel group
+ *
  * Returns the gid of the wheel group, or returns -1 on error.
  * The result is cached, so you can call the function multiple times and
  * expect the same result.
  */
-static inline gid_t
+static __inline gid_t
 wheel_gid(void)
 {
 	gid_t gid;
@@ -39,7 +40,7 @@ wheel_gid(void)
 }
 
 int
-service_start(void)
+service_init(void)
 {
 	struct sockaddr_un addr = { AF_UNIX, SERVICE_SOCK_PATH };
 	int sock;
@@ -51,15 +52,15 @@ service_start(void)
 	if (wheel_gid() < 0)
 		return -1;
 
-	// root:wheel
-	if (fchown(sock, 0, wheel_gid()) < 0)
+	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		return -1;
 
 	// -rw-rw----
-	if (fchmod(sock, 0o660) < 0)
+	if (chmod(SERVICE_SOCK_PATH, 0660) < 0)
 		return -1;
 
-	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	// root:wheel
+	if (chown(SERVICE_SOCK_PATH, 0, wheel_gid()) < 0)
 		return -1;
 
 	if (listen(sock, 1) < 0)
@@ -86,6 +87,7 @@ service_client_authorized(int sock)
 	if (user == NULL)
 		return false;
 
+	// get number of groups
 	getgrouplist(user, gid, NULL, &ngroups);
 
 	groups = malloc(ngroups * sizeof(*groups));
@@ -109,7 +111,6 @@ static int
 auth_user_conv(int num_msg, const struct pam_message **msg,
     struct pam_response **resp, void *sockptr)
 {
-	size_t len;
 	int sock = *(int *)sockptr;
 	char *passwd;
 
@@ -118,7 +119,7 @@ auth_user_conv(int num_msg, const struct pam_message **msg,
 	if (*resp == NULL)
 		return PAM_BUF_ERR;
 
-	passwd = recv_all(sock, &len);
+	passwd = recv_all(sock);
 	if (passwd == NULL)
 		return PAM_BUF_ERR;
 
@@ -130,34 +131,37 @@ auth_user_conv(int num_msg, const struct pam_message **msg,
 static bool
 authenticate(int sock)
 {
-	struct pam_conv conv = { .conv = &auth_user_conv };
+	struct pam_conv conv = { .conv = &auth_user_conv,
+		.appdata_ptr = &sock };
 	pam_handle_t *pamh;
 	struct passwd *pwd = NULL, *result;
 	long buflen;
 	uid_t uid;
+	gid_t gid;
 	char *buf = NULL;
 	bool authed = false;
-
-	pwd = malloc(sizeof(*pwd));
-	if (pwd == NULL)
-		return false;
 
 	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
 	if (buflen < 0)
 		buflen = 16384;
 
+	pwd = malloc(sizeof(*pwd));
+	if (pwd == NULL)
+		goto done;
+
 	buf = malloc(buflen);
 	if (buf == NULL)
 		goto done;
 
-	if (getpeereid(sock, &uid, NULL) < 0)
+	if (getpeereid(sock, &uid, &gid) < 0)
 		goto done;
 
 	getpwuid_r(uid, pwd, buf, buflen, &result);
 	if (result == NULL)
 		goto done;
 
-	pam_start("rootbeer", pwd->pw_name, &conv, &pamh);
+	if (pam_start("rootbeer", pwd->pw_name, &conv, &pamh) != PAM_SUCCESS)
+		goto done;
 
 	if (pam_authenticate(pamh, PAM_SILENT) != PAM_SUCCESS)
 		goto done;

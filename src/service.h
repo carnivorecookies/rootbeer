@@ -12,7 +12,7 @@ struct pam_handle;
  * Returns the file descriptor of the socket, or -1 on error.
  * pam_start(3) must be called before calling service_start.
  */
-int service_start(void);
+int service_init(void);
 
 /*
  * service_client_authorized - checks whether the connected user is authorized
