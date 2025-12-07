@@ -40,6 +40,7 @@ recv_all(int fd, size_t *len)
  * @fd - socket file descriptor
  * @buf - the text to send
  * @len - the length of the text to send
+ *
  * Returns 0 on success and -1 on error.
  */
 static int
