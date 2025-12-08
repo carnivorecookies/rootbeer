@@ -1,19 +1,17 @@
-PROG=	../beer
-SRCS!=	ls *.c
+.include <bsd.own.mk>
+
+PROG=		beer
+
+SRCS=	rootbeer.c service.c socket.c
 MAN=
 
-PKG_CONFIG?=	pkgconf
-
-DEP_C!=		${PKG_CONFIG} --cflags libbsd-overlay pam
-DEP_LD!=	${PKG_CONFIG} --libs   libbsd-overlay pam
-
-.if empty(DEP_LD)
-.error missing dependencies
-.endif
-
-WARNS ?= 2
-
+WARNS?= 	2
 CFLAGS+=	-std=c17 ${DEP_C}
-LDADD+=		${DEP_LD}
+LDADD+=		-lpam
+
+.if ${OS} == Linux
+CFLAGS+=	-isystem ${:!echo /usr/include/*/bsd!} -DLIBBSD_OVERLAY
+LDADD+=		-lbsd-overlay
+.endif
 
 .include <bsd.prog.mk>
