@@ -1,17 +1,22 @@
 .include <bsd.own.mk>
 
-PROG=		beer
+PROG=	../beer
 
-SRCS=	rootbeer.c service.c socket.c
+SRCS=	beer.c service.c socket.c
 MAN=
 
-WARNS?= 	2
+WARNS?= 2
+
 CFLAGS+=	-std=c17 ${DEP_C}
 LDADD+=		-lpam
 
+.if ${WARNS} > 1
+CFLAGS+= -Wpedantic
+.endif
+
 .if ${OS} == Linux
 CFLAGS+=	-isystem ${:!echo /usr/include/*/bsd!} -DLIBBSD_OVERLAY
-LDADD+=		-lbsd-overlay
+LDADD+=		-lbsd
 .endif
 
 .include <bsd.prog.mk>
