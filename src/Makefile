@@ -7,7 +7,7 @@ MAN=
 
 WARNS?= 2
 
-CFLAGS+=	-std=c17 ${DEP_C}
+CFLAGS+=	-std=c17
 LDADD+=		-lpam
 
 .if ${WARNS} > 1
