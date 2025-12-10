@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <assert.h>
 #include <err.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -27,12 +28,16 @@ recv_all(int fd)
 
 	// If the amount of bytes read is -1 or less than the length, a signal
 	// or interrupt has occurred.
-	if ((read = recv(fd, buf, len, MSG_WAITALL)) < 0 ||
-	    (size_t)read < len) {
+
+	read = recv(fd, buf, len, MSG_WAITALL);
+	if ((size_t)read < len) {
 		free(buf);
 		return NULL;
 	}
 
+	// this is guaranteed, but some LSPs dislike if this line does not
+	// exist.
+	assert(read > 0);
 	if (buf[read - 1] != '\0') {
 		buf[read] = '\0';
 	}
@@ -40,23 +45,23 @@ recv_all(int fd)
 	return buf;
 }
 
-/*
- * send_all_raw - same as send_all, but without sending a length prefix.
- * @fd - socket file descriptor
- * @buf - the text to send
- * @len - the length of the text to send
+/**
+ * Similar to send_all, but without sending a length prefix.
+ * @param fd Socket file descriptor.
+ * @param buf The text to send.
+ * @param len The length of the text to send.
  *
- * Returns 0 on success and -1 on error.
+ * @retval `0` on success.
+ * @retval `-1` on error.
  */
 static int
-send_all_raw(int fd, void *buf, size_t len)
+send_all_raw(int fd, char *buf, size_t len)
 {
 	ssize_t sent;
 	size_t totalsent = 0;
-	char *cbuf = (char *)buf;
 
 	while (totalsent < len) {
-		sent = send(fd, cbuf + totalsent, len - totalsent, 0);
+		sent = send(fd, buf + totalsent, len - totalsent, 0);
 		if (sent < 0)
 			return -1;
 		totalsent += sent;
@@ -66,12 +71,14 @@ send_all_raw(int fd, void *buf, size_t len)
 }
 
 int
-send_all(int fd, void *buf)
+send_all(int fd, char *buf)
 {
 	size_t len = strlen(buf);
+	if (len < 0)
+		return 0;
 
 	// Prepend the bits of the message length
-	if (send_all_raw(fd, &len, sizeof(len)) < 0)
+	if (send_all_raw(fd, (char *)&len, sizeof(len)) < 0)
 		return -1;
 
 	if (send_all_raw(fd, buf, len) < 0)

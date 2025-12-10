@@ -2,7 +2,7 @@
 
 PROG=	../beer
 
-SRCS=	beer.c service.c socket.c
+SRCS=	main.c service.c socket.c
 MAN=
 
 WARNS?= 2

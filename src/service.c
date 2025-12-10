@@ -21,11 +21,13 @@
 #include "service.h"
 #include "socket.h"
 
-/*
- * wheel_gid - get the gid of the wheel group
+/**
+ * Gets the gid of the wheel group.
  *
- * Returns the gid of the wheel group, or returns -1 on error.
- * The result is cached, so you can call the function multiple times and
+ * @retval The gid of the wheel group.
+ * @retval `-1` on error
+ *
+ * @note The result is cached, so you can call the function multiple times and
  * expect the same result.
  */
 static __inline gid_t
@@ -133,7 +135,7 @@ authenticate(int sock)
 {
 	struct pam_conv conv = { .conv = &auth_user_conv,
 		.appdata_ptr = &sock };
-	pam_handle_t *pamh;
+	pam_handle_t *pamh = NULL;
 	struct passwd *pwd = NULL, *result;
 	long buflen;
 	uid_t uid;
@@ -170,7 +172,8 @@ authenticate(int sock)
 done:
 	free(buf);
 	free(pwd);
-	pam_end(pamh, PAM_SUCCESS);
+	if (pamh != NULL)
+		pam_end(pamh, PAM_SUCCESS);
 	return authed;
 }
 
