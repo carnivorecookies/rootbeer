@@ -19,8 +19,7 @@ int service_init(void);
  *
  * @param sock The file descriptor of the socket.
  *
- * @note This function is not thread safe, and must be called before
- * `service_handle_client`.
+ * @note This function is not thread safe, and must be called before `service_handle_client`.
  *
  * @retval `true` if the user is authorized.
  * @retval `false` if the user is not authorized.

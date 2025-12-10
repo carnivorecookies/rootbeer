@@ -4,8 +4,7 @@
  * `recv()` a list of strings from a socket.
  * @param fd File descriptor of the socket.
  *
- * @retval a `NULL`-terminated, allocated array of `NUL`-terminated allocated
- * strings, which all must be freed by the caller.
+ * @retval a `NULL`-terminated, allocated array of `NUL`-terminated allocated strings, which all must be freed by the caller.
  * @retval `NULL` on error.
  */
 char **recv_array(int fd);
@@ -24,8 +23,7 @@ int send_array(int fd, char **strings);
  * `recv()` a full message from a socket (prefixed with its length)/
  * @param fd socket file descriptor
  *
- * @retval A `NUL`-terminated string on success, which must be freed by the
- * caller.
+ * @retval A `NUL`-terminated string on success, which must be freed by the caller.
  * @retval `NULL` on error.
  */
 void *recv_all(int fd);
