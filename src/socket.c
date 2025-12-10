@@ -53,11 +53,9 @@ recv_all(int fd)
 static int
 send_all_raw(int fd, char *buf, size_t len)
 {
-	ssize_t sent;
 	size_t totalsent = 0;
-
 	while (totalsent < len) {
-		sent = send(fd, buf + totalsent, len - totalsent, 0);
+		ssize_t sent = send(fd, buf + totalsent, len - totalsent, 0);
 		if (sent < 0)
 			return -1;
 		totalsent += sent;

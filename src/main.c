@@ -16,17 +16,15 @@
 static void
 run_client(void)
 {
-	struct sockaddr_un service = { AF_UNIX, SERVICE_SOCK_PATH };
-	int sock;
-	char pass[PAM_MAX_RESP_SIZE];
-
-	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0)
 		err(1, "failed to create socket");
 
+	struct sockaddr_un service = { AF_UNIX, SERVICE_SOCK_PATH };
 	if (connect(sock, (struct sockaddr *)&service, sizeof(service)) < 0)
 		err(1, "failed to connect to service");
 
+	char pass[PAM_MAX_RESP_SIZE];
 	if (readpassphrase("enter password: ", pass, sizeof(pass), 0) == NULL)
 		err(1, "failed to read password");
 
@@ -37,19 +35,17 @@ run_client(void)
 int
 main(int argc, char **argv)
 {
-	int sock, client;
-
 	(void)argv;
 	if (argc > 1) {
 		run_client();
 		return 0;
 	}
 
-	sock = service_init();
+	int sock = service_init();
 	if (sock < 0)
 		err(1, "failed to init daemon");
 
-	client = accept(sock, NULL, NULL);
+	int client = accept(sock, NULL, NULL);
 	if (client < 0)
 		err(1, "connection failed");
 

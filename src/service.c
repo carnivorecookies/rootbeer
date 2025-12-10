@@ -44,16 +44,16 @@ wheel_gid(void)
 int
 service_init(void)
 {
-	struct sockaddr_un addr = { AF_UNIX, SERVICE_SOCK_PATH };
-	int sock;
+	if (wheel_gid() < 0) {
+		warnx("wheel account does not exist");
+		return -1;
+	}
 
-	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0)
 		return -1;
 
-	if (wheel_gid() < 0)
-		return -1;
-
+	struct sockaddr_un addr = { AF_UNIX, SERVICE_SOCK_PATH };
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		return -1;
 
@@ -74,31 +74,30 @@ service_init(void)
 bool
 service_client_authorized(int sock)
 {
-	gid_t gid, *groups, wheel;
+	gid_t gid;
 	uid_t uid;
-	int i, ngroups;
-	const char *user;
-
 	if (getpeereid(sock, &uid, &gid) < 0)
 		return false;
 
+	gid_t wheel;
 	if (gid_from_group("wheel", &wheel) < 0)
 		return false;
 
-	user = user_from_uid(uid, 1);
+	const char *user = user_from_uid(uid, 1);
 	if (user == NULL)
 		return false;
 
 	// get number of groups
+	int ngroups;
 	getgrouplist(user, gid, NULL, &ngroups);
 
-	groups = malloc(ngroups * sizeof(*groups));
+	gid_t *groups = malloc(ngroups * sizeof(*groups));
 	if (groups == NULL)
 		return false;
 
 	getgrouplist(user, gid, groups, &ngroups);
 
-	for (i = 0; i < ngroups; i++) {
+	for (int i = 0; i < ngroups; i++) {
 		if (groups[i] == wheel) {
 			free(groups);
 			return true;
@@ -114,14 +113,13 @@ auth_user_conv(int num_msg, const struct pam_message **msg,
     struct pam_response **resp, void *sockptr)
 {
 	int sock = *(int *)sockptr;
-	char *passwd;
 
 	// resp_retcode must be 0, and the unused responses should be NULL
 	*resp = calloc(num_msg, sizeof(**resp));
 	if (*resp == NULL)
 		return PAM_BUF_ERR;
 
-	passwd = recv_all(sock);
+	char *passwd = recv_all(sock);
 	if (passwd == NULL)
 		return PAM_BUF_ERR;
 
@@ -133,37 +131,37 @@ auth_user_conv(int num_msg, const struct pam_message **msg,
 static bool
 authenticate(int sock)
 {
-	struct pam_conv conv = { .conv = &auth_user_conv,
-		.appdata_ptr = &sock };
 	pam_handle_t *pamh = NULL;
-	struct passwd *pwd = NULL, *result;
-	long buflen;
-	uid_t uid;
-	gid_t gid;
-	char *buf = NULL;
 	bool authed = false;
 
-	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+	uid_t uid;
+	gid_t gid;
+	if (getpeereid(sock, &uid, &gid) < 0)
+		return -1;
+
+	struct passwd *pwd = malloc(sizeof(*pwd));
+	if (pwd == NULL)
+		return -1;
+
+	long buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
 	if (buflen < 0)
 		buflen = 16384;
 
-	pwd = malloc(sizeof(*pwd));
-	if (pwd == NULL)
-		goto done;
-
-	buf = malloc(buflen);
+	char *buf = malloc(buflen);
 	if (buf == NULL)
 		goto done;
 
-	if (getpeereid(sock, &uid, &gid) < 0)
-		goto done;
-
+	struct passwd *result;
 	getpwuid_r(uid, pwd, buf, buflen, &result);
 	if (result == NULL)
 		goto done;
 
-	if (pam_start("rootbeer", pwd->pw_name, &conv, &pamh) != PAM_SUCCESS)
+	struct pam_conv conv = { .conv = &auth_user_conv,
+		.appdata_ptr = &sock };
+	if (pam_start("rootbeer", pwd->pw_name, &conv, &pamh) != PAM_SUCCESS) {
+		pamh = NULL;
 		goto done;
+	}
 
 	if (pam_authenticate(pamh, PAM_SILENT) != PAM_SUCCESS)
 		goto done;
