@@ -13,29 +13,25 @@
 void *
 recv_all(int fd)
 {
-	ssize_t read;
-	size_t len;
-	char *buf;
-
 	// The first bits are the length of the message.
+	size_t len;
 	if (recv(fd, &len, sizeof(len), MSG_WAITALL) < (ssize_t)sizeof(len))
 		return NULL;
 
 	// Allocate one more byte in case the sent string isn't NUL-terminated.
-	buf = malloc(len + 1);
+	char *buf = malloc(len + 1);
 	if (buf == NULL)
 		return NULL;
 
 	// If the amount of bytes read is -1 or less than the length, a signal
 	// or interrupt has occurred.
-
-	read = recv(fd, buf, len, MSG_WAITALL);
-	if ((size_t)read < len) {
+	ssize_t read = recv(fd, buf, len, MSG_WAITALL);
+	if (read < 0 || (size_t)read < len) {
 		free(buf);
 		return NULL;
 	}
 
-	// this is guaranteed, but some LSPs dislike if this line does not
+	// this is guaranteed, but some LSPs dislike if this assertion does not
 	// exist.
 	assert(read > 0);
 	if (buf[read - 1] != '\0') {
