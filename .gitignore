@@ -61,3 +61,6 @@ compile_commands.json
 
 # clang cache
 .cache
+
+# `make dist`
+*.tar.gz

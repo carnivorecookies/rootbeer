@@ -21,11 +21,18 @@
 #include "service.h"
 #include "socket.h"
 
+#if defined(__has_attribute) && __has_attribute(__unused__)
+// libbsd cannot define __unused as of writing this because of variables in the linux kernel being named __unused
+#define _unused __attribute__((__unused__))
+#else
+#define _unused
+#endif
+
 /**
  * Gets the gid of the wheel group.
  *
  * @retval The gid of the wheel group.
- * @retval `-1` if the wheel group does not exist.
+ * @retval `0` if the wheel group does not exist.
  *
  * @note The result is cached, so you can call the function multiple times and expect the same result.
  * @note Calls `warn()` if the wheel group does not exist.
@@ -35,14 +42,14 @@ static inline gid_t wheel_gid(void)
     gid_t gid;
     if (gid_from_group("wheel", &gid) < 0) {
         warn("no wheel group found");
-        return -1;
+        return 0;
     }
     return gid;
 }
 
 int service_init(void)
 {
-    if (wheel_gid() < 0)
+    if (wheel_gid() == 0)
         return -1; // See `wheel_gid()` notes.
 
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -103,7 +110,7 @@ bool service_client_authorized(int sock)
     return false;
 }
 
-static int auth_user_conv(int num_msg, const struct pam_message **msg,
+static int auth_user_conv(int num_msg, const struct pam_message **msg _unused,
     struct pam_response **resp, void *sockptr)
 {
     int sock = *(int *)sockptr;

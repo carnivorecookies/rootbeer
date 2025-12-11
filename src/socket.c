@@ -17,6 +17,10 @@ void *recv_all(int fd)
     if (recv(fd, &len, sizeof(len), MSG_WAITALL) < (ssize_t)sizeof(len))
         return NULL;
 
+    if (len == 0) {
+        return calloc(1, 1);
+    }
+
     // Allocate one more byte in case the sent string isn't NUL-terminated.
     char *buf = malloc(len + 1);
     if (buf == NULL)
@@ -29,7 +33,7 @@ void *recv_all(int fd)
         return NULL;
     }
 
-    // this is guaranteed, but some LSPs dislike if this assertion does not exist.
+    // It is impossible for this assertion to fail, but it is needed on some LSPs.
     assert(read > 0);
     if (buf[read - 1] != '\0') {
         buf[read] = '\0';
@@ -63,7 +67,7 @@ static int send_all_raw(int fd, char *buf, size_t len)
 int send_all(int fd, char *buf)
 {
     size_t len = strlen(buf);
-    if (len < 0)
+    if (len == 0)
         return 0;
 
     // Prepend the bits of the message length
